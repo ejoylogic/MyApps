@@ -59,7 +59,7 @@ final class AppModel: ObservableObject {
     }
 
     func addClipRange(from text: String) {
-        let entries = text.split(whereSeparator: \.isNewline)
+        let entries = text.split(whereSeparator: \.$isNewline)
         let ranges = entries.flatMap { ClipParser.parse(line: String($0)) }
         let newClips = ranges.map { ClipItem(range: $0) }
         clips.append(contentsOf: newClips)

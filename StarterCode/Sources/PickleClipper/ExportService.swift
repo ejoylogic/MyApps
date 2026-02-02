@@ -12,7 +12,7 @@ final class ExportService {
         progress: @escaping (ExportUpdate) -> Void
     ) {
         queue.async {
-            let asset = AVURLAsset(url: sourceURL)
+            let asset = AVAsset(url: sourceURL)
             let duration = asset.duration
 
             let normalizedClips = clips.filter { clip in
@@ -91,7 +91,7 @@ final class ExportService {
         }
 
         while session.status == .exporting {
-            progress(Double(session.progress))
+            progress(session.progress)
             Thread.sleep(forTimeInterval: 0.1)
         }
 
