@@ -1,9 +1,11 @@
 import AppKit
 import Foundation
+import UniformTypeIdentifiers
 
 final class VideoImporter {
     func pickVideo(completion: @escaping (Result<URL, Error>) -> Void) {
         let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.movie, .mpeg4Movie]
         panel.allowedFileTypes = ["mov", "mp4", "m4v"]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false

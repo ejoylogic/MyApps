@@ -72,6 +72,31 @@ final class ExportService {
             return .failure(ExportError.sessionCreation)
         }
 
+        let selectedFileType: AVFileType
+        if session.supportedFileTypes.contains(.mp4) {
+            selectedFileType = .mp4
+        } else if session.supportedFileTypes.contains(.mov) {
+            selectedFileType = .mov
+        } else if let fallbackType = session.supportedFileTypes.first {
+            selectedFileType = fallbackType
+        } else {
+            return .failure(ExportError.unsupportedFileType)
+        }
+
+        let outputURL = outputFolder
+            .appendingPathComponent(exportFileName(sourceURL: sourceURL, clip: clip, clipIndex: clipIndex))
+            .appendingPathExtension(fileExtension(for: selectedFileType))
+
+        do {
+            if FileManager.default.fileExists(atPath: outputURL.path) {
+                try FileManager.default.removeItem(at: outputURL)
+            }
+        } catch {
+            return .failure(error)
+        }
+
+        session.outputURL = outputURL
+        session.outputFileType = selectedFileType
         let outputURL = outputFolder
             .appendingPathComponent(exportFileName(sourceURL: sourceURL, clip: clip, clipIndex: clipIndex))
             .appendingPathExtension("mp4")
@@ -91,6 +116,7 @@ final class ExportService {
         }
 
         while session.status == .exporting {
+            progress(Double(session.progress))
             progress(session.progress)
             Thread.sleep(forTimeInterval: 0.1)
         }
@@ -115,6 +141,19 @@ final class ExportService {
         return "\(baseName)_clip\(indexString)_\(clip.range.start.displayString)_to_\(clip.range.end.displayString)"
             .replacingOccurrences(of: ":", with: "-")
     }
+
+    private func fileExtension(for fileType: AVFileType) -> String {
+        switch fileType {
+        case .mp4:
+            return "mp4"
+        case .mov:
+            return "mov"
+        case .m4v:
+            return "m4v"
+        default:
+            return fileType.rawValue.replacingOccurrences(of: ".", with: "")
+        }
+    }
 }
 
 enum ExportError: LocalizedError {
@@ -122,6 +161,7 @@ enum ExportError: LocalizedError {
     case sessionCreation
     case exportFailed
     case cancelled
+    case unsupportedFileType
 
     var errorDescription: String? {
         switch self {
@@ -133,6 +173,8 @@ enum ExportError: LocalizedError {
             return "The export failed."
         case .cancelled:
             return "The export was cancelled."
+        case .unsupportedFileType:
+            return "No compatible output file type is supported for this asset."
         }
     }
 }
