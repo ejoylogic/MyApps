@@ -12,7 +12,7 @@ final class ExportService {
         progress: @escaping (ExportUpdate) -> Void
     ) {
         queue.async {
-            let asset = AVURLAsset(url: sourceURL)
+            let asset = AVAsset(url: sourceURL)
             let duration = asset.duration
 
             let normalizedClips = clips.filter { clip in
@@ -97,6 +97,12 @@ final class ExportService {
 
         session.outputURL = outputURL
         session.outputFileType = selectedFileType
+        let outputURL = outputFolder
+            .appendingPathComponent(exportFileName(sourceURL: sourceURL, clip: clip, clipIndex: clipIndex))
+            .appendingPathExtension("mp4")
+
+        session.outputURL = outputURL
+        session.outputFileType = .mp4
         session.timeRange = timeRange
 
         if let composition = VideoCompositionBuilder.build(asset: asset, resolution: resolution) {
@@ -111,6 +117,7 @@ final class ExportService {
 
         while session.status == .exporting {
             progress(Double(session.progress))
+            progress(session.progress)
             Thread.sleep(forTimeInterval: 0.1)
         }
 
