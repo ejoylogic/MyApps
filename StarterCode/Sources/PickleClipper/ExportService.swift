@@ -9,6 +9,11 @@ final class ExportService {
         outputFolder: URL,
         clips: [ClipItem],
         resolution: OutputResolution,
+        naming: ClipNaming,
+        progress: @escaping (ExportUpdate) -> Void
+    ) {
+        queue.async {
+            let asset = AVURLAsset(url: sourceURL)
         progress: @escaping (ExportUpdate) -> Void
     ) {
         queue.async {
@@ -36,6 +41,7 @@ final class ExportService {
                     sourceURL: sourceURL,
                     outputFolder: outputFolder,
                     resolution: resolution,
+                    naming: naming,
                     progress: { clipProgress in
                         progress(.clipProgress(id: clip.id, progress: clipProgress, status: .exporting))
                     }
@@ -63,6 +69,7 @@ final class ExportService {
         sourceURL: URL,
         outputFolder: URL,
         resolution: OutputResolution,
+        naming: ClipNaming,
         progress: @escaping (Double) -> Void
     ) -> Result<Void, Error> {
         let timeRange = CMTimeRange(start: clip.range.start, end: clip.range.end)
@@ -83,6 +90,14 @@ final class ExportService {
             return .failure(ExportError.unsupportedFileType)
         }
 
+        do {
+            try FileManager.default.createDirectory(at: outputFolder, withIntermediateDirectories: true)
+        } catch {
+            return .failure(error)
+        }
+
+        let outputURL = outputFolder
+            .appendingPathComponent(exportFileName(sourceURL: sourceURL, clip: clip, clipIndex: clipIndex, naming: naming))
         let outputURL = outputFolder
             .appendingPathComponent(exportFileName(sourceURL: sourceURL, clip: clip, clipIndex: clipIndex))
             .appendingPathExtension(fileExtension(for: selectedFileType))
@@ -127,6 +142,25 @@ final class ExportService {
         case .completed:
             return .success(())
         case .failed:
+            return .failure(ExportError.exportFailed(details: detailedExportError(session.error)))
+        case .cancelled:
+            return .failure(ExportError.cancelled)
+        default:
+            return .failure(ExportError.exportFailed(details: "Export did not complete successfully."))
+        }
+    }
+
+    private func exportFileName(sourceURL: URL, clip: ClipItem, clipIndex: Int, naming: ClipNaming) -> String {
+        let baseName = sourceURL.deletingPathExtension().lastPathComponent
+        let indexString = String(format: "%02d", clipIndex + 1)
+        let timestamp = "\(clip.range.start.displayString)_to_\(clip.range.end.displayString)"
+        let normalizedTimestamp = timestamp.replacingOccurrences(of: ":", with: "-")
+        switch naming {
+        case .filenameAndTimestamp:
+            return "\(baseName)_clip\(indexString)_\(normalizedTimestamp)"
+        case .timestampOnly:
+            return "clip\(indexString)_\(normalizedTimestamp)"
+        }
             return .failure(session.error ?? ExportError.exportFailed)
         case .cancelled:
             return .failure(ExportError.cancelled)
@@ -154,11 +188,20 @@ final class ExportService {
             return fileType.rawValue.replacingOccurrences(of: ".", with: "")
         }
     }
+
+    private func detailedExportError(_ error: Error?) -> String {
+        guard let error else {
+            return "The export failed with an unknown error."
+        }
+        let nsError = error as NSError
+        return "\(nsError.localizedDescription) (domain: \(nsError.domain), code: \(nsError.code))"
+    }
 }
 
 enum ExportError: LocalizedError {
     case noValidClips
     case sessionCreation
+    case exportFailed(details: String)
     case exportFailed
     case cancelled
     case unsupportedFileType
@@ -169,6 +212,8 @@ enum ExportError: LocalizedError {
             return "No valid clips were within the video duration."
         case .sessionCreation:
             return "Could not create an export session."
+        case .exportFailed(let details):
+            return "The export failed: \(details)"
         case .exportFailed:
             return "The export failed."
         case .cancelled:

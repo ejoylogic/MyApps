@@ -9,6 +9,7 @@ final class AppModel: ObservableObject {
     @Published var outputFolderURL: URL?
     @Published var clips: [ClipItem] = []
     @Published var selectedResolution: OutputResolution = .source
+    @Published var selectedNaming: ClipNaming = .filenameAndTimestamp
     @Published var isExporting = false
     @Published var overallProgress: Double = 0
     @Published var statusMessage: String?
@@ -83,6 +84,8 @@ final class AppModel: ObservableObject {
             sourceURL: sourceURL,
             outputFolder: outputFolderURL,
             clips: clips,
+            resolution: selectedResolution,
+            naming: selectedNaming
             resolution: selectedResolution
         ) { [weak self] update in
             DispatchQueue.main.async {
@@ -187,6 +190,22 @@ enum OutputResolution: Hashable, Identifiable {
         .hd720,
         .custom(width: 1920, height: 1080)
     ]
+}
+
+enum ClipNaming: String, CaseIterable, Identifiable {
+    case filenameAndTimestamp
+    case timestampOnly
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .filenameAndTimestamp:
+            return "Filename + Timestamp"
+        case .timestampOnly:
+            return "Timestamp Only"
+        }
+    }
 }
 
 struct AlertInfo: Identifiable {

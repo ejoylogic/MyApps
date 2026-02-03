@@ -25,6 +25,7 @@ struct ContentView: View {
             }
 
             ResolutionPicker(selection: $appModel.selectedResolution)
+            NamingPicker(selection: $appModel.selectedNaming)
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Clip Ranges")
@@ -124,6 +125,23 @@ struct ResolutionPicker: View {
                     .frame(width: 80)
                 }
             }
+        }
+    }
+}
+
+struct NamingPicker: View {
+    @Binding var selection: ClipNaming
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Clip Naming")
+                .font(.headline)
+            Picker("Clip Naming", selection: $selection) {
+                ForEach(ClipNaming.allCases) { option in
+                    Text(option.title).tag(option)
+                }
+            }
+            .pickerStyle(.segmented)
         }
     }
 }
